@@ -1,0 +1,1 @@
+export const CATEGORIES = ['sport', 'political', 'domestic', 'foriegn', 'weather', 'health', 'tech'];
