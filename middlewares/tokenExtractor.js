@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import clog from './tools/consoleLog.js';
 
 
 
@@ -15,7 +14,7 @@ const tokex = function(req, res, next) {
     } catch (error) {
 
         req.decoded = undefined;
-        clog(`[TOKEN EXTRACTION ERROR]`);
+        console.log(`[TOKEN EXTRACTION ERROR]`);
         
         next();
     }

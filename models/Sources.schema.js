@@ -4,6 +4,12 @@ import { CATEGORIES } from "./enums.js";
 const sourcesSchema = new mongoose.Schema({
     name: { type: String, required: true }, // e.g., "BBC Tech"
     url: { type: String, required: true, unique: true }, // The RSS/API link
+    apiKey: {type: String},
+    urlType: {
+        type: String,
+        enum: ['rss', 'api'],
+        required: true
+    },
     category: [{ 
         type: String, 
         enum: CATEGORIES, 

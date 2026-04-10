@@ -10,6 +10,9 @@ const respond = function(res, code , msg , data) {
         case 201:
             msg = msg ?? 'Added!';
             break;
+        case 204:
+            msg = msg ?? 'No Content';
+            break;
         case 400:
             msg = msg ?? 'Bad Request!';
             hasError = true;
@@ -19,6 +22,10 @@ const respond = function(res, code , msg , data) {
             msg = msg ?? 'Unathorized!';
             hasError = true;
             success = false;
+            break;
+        case 403:
+            msg = msg ?? 'Forbidden!';
+            success: false;
             break;
         case 404:
             msg = msg ?? 'Not Found!';
