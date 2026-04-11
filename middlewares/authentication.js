@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 // general authentication
 const authentication = function(req, res, next) {
-    const key = process.env.SERVER_SECRET;
+    const key = process.env.JWT_SECRET;
     try {
         // const token = req.headers.authorization;
         const token = req.headers.token;

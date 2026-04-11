@@ -13,7 +13,8 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const sendVerificationEmail = async (userEmail, token) => {
+// for verification of new user sing up
+export const sendVerificationEmail = async (userEmail, token) => {
     const verificationUrl = `${baseUrl}/account_verification/${token}`;
 
     const mailOptions = {
@@ -38,4 +39,21 @@ const sendVerificationEmail = async (userEmail, token) => {
     return transporter.sendMail(mailOptions);
 };
 
-export default sendVerificationEmail;
+
+// for resetting the password 
+export const sendResetPasswordEmail = async (userEmail, token) => {
+    const resetUrl = `${baseUrl}/verify_reset/${token}`; // Usually points to a Frontend page
+
+    const mailOptions = {
+        from: '"NSM Security" <no-reply@nsm.com>',
+        to: userEmail,
+        subject: 'Password Reset Request',
+        html: `
+            <p>You requested a password reset. Click the link below to set a new password:</p>
+            <a href="${resetUrl}">Reset Password</a>
+            <p>This link will expire in 1 hour.</p>
+        `
+    };
+
+    return transporter.sendMail(mailOptions);
+};

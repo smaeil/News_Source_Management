@@ -5,7 +5,8 @@ import crypto from 'crypto';
 import User from '../models/Users.schema.js';
 import respond from '../middlewares/tools/httpRes.js';
 import authentication from "../middlewares/authentication.js";
-import sendVerificationEmail from "../middlewares/emailService.js";
+import {sendVerificationEmail , sendResetPasswordEmail} from "../middlewares/emailService.js";
+import jwt from 'jsonwebtoken';
 
 
 // to sign up:
@@ -106,9 +107,9 @@ router.post('/signin', async (req, res) => {
         }
 
         // 2. Find User
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: email });
         if (!user) {
-            return respond(res, 401, "Invalid credentials."); // 401 Unauthorized
+            return respond(res, 401, "Invalid credentials!"); // 401 Unauthorized
         }
 
         // 3. Check if Verified
@@ -119,7 +120,7 @@ router.post('/signin', async (req, res) => {
         // 4. Compare Password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return respond(res, 401, "Invalid credentials.");
+            return respond(res, 401, "Wrong Password!");
         }
 
         // 5. Create JWT Token
@@ -149,18 +150,185 @@ router.post('/signin', async (req, res) => {
 
 
 // to change password:
-router.post('/change_password', authentication, async (req, res) => {});
+router.post('/change_password', authentication, async (req, res) => {
+    try {
+        const id = req.decoded.id;
+        const {password, newPassword} = req.body;
 
+        // 1. Basic Validation
+        if (!password || !newPassword) {
+            return respond(res, 400, "Please give your current password and new password.");
+        }
+
+        // 2. Security Check: Prevent using the same password
+        if (password === newPassword) {
+            return respond(res, 400, "New password cannot be the same as the current one.");
+        }
+
+        // 3. Find User
+        const user = await User.findById(id);
+
+
+        // 4. Compare Password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return respond(res, 401, "Wrong Password!");
+        }
+
+        // 5. Hash the new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // 6. Change the Password
+        user.password = hashedPassword; 
+        await user.save();
+
+        return respond(res, 200, 'Your password has been changed!');
+
+    } catch (error) {
+        console.error("Change Password Error:", error);
+        return respond(res, 500); 
+    }
+});
+
+
+
+// to request a password reset:
+router.post('/forgotten_password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            // Security Tip: Even if user doesn't exist, we usually send 
+            // a vague success message so hackers can't "fish" for emails.
+            return respond(res, 200, "If that email exists, a reset link has been sent.");
+        }
+
+        // 1. Create a short-lived reset token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        
+        // 2. Save token and an expiry time (e.g., 1 hour) to the User model
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 hour from now
+        await user.save();
+
+        // 3. Send the email (We need a new function in emailService.js)
+        try {
+            await sendResetPasswordEmail(user.email, resetToken);
+            return respond(res, 200, "Reset link sent to your email.");
+        } catch (mailError) {
+            return respond(res, 500, "Error sending the email.");
+        }
+
+    } catch (error) {
+        return respond(res, 500, "Server error.");
+    }
+});
+
+
+
+// This is the route the user clicks in their email
+router.get('/verify_reset/:token', async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        // Check if token exists and isn't expired
+        const user = await User.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            // If invalid, send them to a frontend error page
+            return res.redirect('http://localhost:5173/reset-error');
+        }
+
+        // If valid, redirect to the Frontend Reset Form 
+        // We pass the token in the URL so the frontend can send it back later
+        return res.redirect(`http://localhost:5173/reset-password-form?token=${token}`);
+
+    } catch (error) {
+        // redirects to front end reset form
+        return res.redirect('http://localhost:5173/reset-error');
+    }
+});
 
 // to reset password in case of forgotten password
-router.post('/reset_password/:token', async (req, res) => {});
-
-//test route
-router.get('/test', async (req, res) => {
+router.post('/reset_password/:token', async (req, res) => {
     try {
-        return respond(res, 200, "Test Ok!!!")
+        const { token } = req.params;
+        const { newPassword } = req.body;
+
+        // 1. Find user with valid token AND ensure it hasn't expired
+        const user = await User.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() } // $gt = greater than
+        });
+
+        if (!user) {
+            return respond(res, 400, "Token is invalid or has expired.");
+        }
+
+        // 2. Hash and Save new password
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+
+        // 3. Clear the reset fields
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return respond(res, 200, "Password has been reset successfully!");
+
     } catch (error) {
-        return respond(res, 500, "Server Error");
+        return respond(res, 500, "Server error.");
+    }
+});
+
+// to get user preferences:
+router.get('/preferences', authentication, async (req, res) => {
+    try {
+
+        const id = req.decoded.id;
+
+        const user = await User.findById(id);
+
+        return respond(res, 200, null, user.preferences);
+        
+    } catch (error) {
+        return respond(res, 500);
+    }
+});
+
+// to update user preferences:
+router.post('/preferences', authentication, async (req, res) => {
+    try {
+        const id = req.decoded.id;
+        const { preferences } = req.body;
+
+        // 1. Validation: Ensure preferences is actually an array
+        if (!Array.isArray(preferences)) {
+            return respond(res, 400, "Preferences must be an array of items.");
+        }
+
+        // 2. Update the user
+        // { new: true } returns the updated document instead of the old one
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $set: { preferences: preferences } }, 
+            { new: true, runValidators: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return respond(res, 404, "User not found.");
+        }
+
+        return respond(res, 200, "Preferences updated successfully!", updatedUser.preferences);
+
+    } catch (error) {
+        console.error("Preferences Update Error:", error);
+        return respond(res, 500, "Server error while updating preferences.");
     }
 });
 
