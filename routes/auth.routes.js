@@ -82,6 +82,8 @@ router.get('/account_verification/:token', async (req, res) => {
         await user.save();
 
         // 3. Final success response
+        // Vibe Tip: If you want to redirect them to your React App:
+        // return res.redirect('http://localhost:5173/login?verified=true');
         return respond(res, 200, "Email verified successfully! You can now log in.");
         
     } catch (error) {
@@ -90,8 +92,60 @@ router.get('/account_verification/:token', async (req, res) => {
     }
 });
 
+
+
+
 // to sign in:
-router.post('/signin', async (req, res) => {});
+router.post('/signin', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // 1. Basic Validation
+        if (!email || !password) {
+            return respond(res, 400, "Please provide email and password.");
+        }
+
+        // 2. Find User
+        const user = await User.findOne({ email });
+        if (!user) {
+            return respond(res, 401, "Invalid credentials."); // 401 Unauthorized
+        }
+
+        // 3. Check if Verified
+        if (!user.isVerified) {
+            return respond(res, 403, "Please verify your email before logging in.");
+        }
+
+        // 4. Compare Password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return respond(res, 401, "Invalid credentials.");
+        }
+
+        // 5. Create JWT Token
+        // The 'payload' usually contains the user ID
+        const token = jwt.sign(
+            { id: user._id, role: user.role }, 
+            process.env.JWT_SECRET, 
+            { expiresIn: '365d' } // Token lasts for 1 day
+        );
+
+        // 6. Send response with the token and user data (except password!)
+        const userData = {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            preferences: user.preferences
+        };
+
+        return respond(res, 200, "Login successful!", { token, user: userData });
+
+    } catch (error) {
+        console.error("Signin Error:", error);
+        return respond(res, 500, "Server error during signin.");
+    }
+});
 
 
 // to change password:
