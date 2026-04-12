@@ -17,7 +17,6 @@ const savesSchema = new mongoose.Schema({
         required: true
     },
     source: String,
-    // Changed to 'categories' to match your enum and other schema
     categories: [{
         type: String,
         enum: CATEGORIES
@@ -25,8 +24,21 @@ const savesSchema = new mongoose.Schema({
     publishDate: Date
 }, { timestamps: true });
 
-// Prevent a user from saving the same link twice
+// 1. Existing Index: Prevent a user from saving the same link twice
 savesSchema.index({ user: 1, link: 1 }, { unique: true });
+
+// 2. New Index: Full Text Search Index
+// This allows searching across title and source fields
+savesSchema.index({ 
+    title: 'text', 
+    source: 'text' 
+}, {
+    weights: {
+        title: 10,  // Title matches have higher relevance
+        source: 2
+    },
+    name: "SavesTextSearchIndex"
+});
 
 const Saves = mongoose.model('Save', savesSchema);
 
