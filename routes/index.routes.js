@@ -19,7 +19,9 @@ import saves from './saves.routes.js';
 router.use('/my_saves', saves)
 
 
-
+// news feed
+import feeds from './feeds.routes.js';
+router.use('/feeds', feeds);
 
 // handling wrong endpoints : ******************************************************************************
 router.use( async (req, res) => {
