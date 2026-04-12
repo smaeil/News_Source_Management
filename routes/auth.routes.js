@@ -7,6 +7,7 @@ import respond from '../middlewares/tools/httpRes.js';
 import authentication from "../middlewares/authentication.js";
 import {sendVerificationEmail , sendResetPasswordEmail} from "../middlewares/emailService.js";
 import jwt from 'jsonwebtoken';
+import frontEndBaseUrl from '../config/frontEnd.js';
 
 
 // to sign up:
@@ -241,16 +242,16 @@ router.get('/verify_reset/:token', async (req, res) => {
 
         if (!user) {
             // If invalid, send them to a frontend error page
-            return res.redirect('http://localhost:5173/reset-error');
+            return res.redirect(`${frontEndBaseUrl}/reset-error`);
         }
 
         // If valid, redirect to the Frontend Reset Form 
         // We pass the token in the URL so the frontend can send it back later
-        return res.redirect(`http://localhost:5173/reset-password-form?token=${token}`);
+        return res.redirect(`${frontEndBaseUrl}/reset-password-form?token=${token}`);
 
     } catch (error) {
         // redirects to front end reset form
-        return res.redirect('http://localhost:5173/reset-error');
+        return res.redirect(`${frontEndBaseUrl}/reset-error`);
     }
 });
 

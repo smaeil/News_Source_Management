@@ -1,5 +1,15 @@
 import express from 'express';
 const router = express.Router();
+import { CATEGORIES } from '../models/enums.js';
+
+// getting categories:
+router.get('/categories', async (req, res) => {
+    try {
+        return respond(res, 200, null, CATEGORIES);
+    } catch (error) {
+        return respond(res, 500);
+    }
+});
 
 // Sending React dist:
 router.get('/', (req, res) => res.sendFile('./public/index.html'));

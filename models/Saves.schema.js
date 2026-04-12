@@ -7,6 +7,14 @@ const savesSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    thumbnail: {
+        type: String,
+        default: null
+    },
+    favorite: {
+        type: Boolean,
+        default: false
+    },
     title: {
         type: String,
         required: true,
