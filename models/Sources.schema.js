@@ -10,6 +10,14 @@ const sourcesSchema = new mongoose.Schema({
         enum: ['rss', 'api'],
         required: true
     },
+    headers: { type: Object, default: {} }, // e.g., { "User-Agent": "NSM-App" }
+    mapping: {
+        root: { type: String, default: "articles" },    // Path to the array
+        title: { type: String, default: "title" },      // Field name for title
+        link: { type: String, default: "url" },         // Field name for link
+        thumbnail: { type: String, default: "urlToImage" }, // Field name for image
+        date: { type: String, default: "publishedAt" }  // Field name for date
+    },
     category: [{ 
         type: String, 
         enum: CATEGORIES, 

@@ -17,6 +17,7 @@ router.get('/list', authentication, adminCheck, async (req, res) => {
             Sources.find().sort({ name: 1 }).skip(skip).limit(limit),
             Sources.countDocuments()
         ]);
+        console.log(req.decoded.role);
 
         return respond(res, 200, "Sources list retrieved.", {
             sources: allSources,

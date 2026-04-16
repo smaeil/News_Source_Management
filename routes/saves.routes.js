@@ -58,7 +58,7 @@ router.get('/single/:save_id', authentication, async (req, res) => {
 router.post('/save', authentication, async (req, res) => {
     try {
         const userId = req.decoded.id;
-        const { title, url, source, imageUrl, description } = req.body;
+        const { title, url, source, imageUrl, description, thumbnail, favorite } = req.body;
 
         if (!title || !url) return respond(res, 400, "Missing title or URL.");
 
@@ -68,7 +68,9 @@ router.post('/save', authentication, async (req, res) => {
             url,
             source,
             imageUrl,
-            description
+            description,
+            thumbnail: thumbnail || null,
+            favorite: favorite || false
         });
 
         await newSave.save();

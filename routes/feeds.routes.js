@@ -7,8 +7,9 @@ import respond from "../middlewares/tools/httpRes.js";
 
 const router = express.Router();
 
+
 // 1. Live Feed according to user's preference
-router.get('/myFeed', authentication, async (req, res) => {
+router.get('/my_feed', authentication, async (req, res) => {
     try {
         const userId = req.decoded.id;
         const user = await User.findById(userId);
@@ -88,6 +89,57 @@ router.get('/search', authentication, async (req, res) => {
         });
     } catch (error) {
         return respond(res, 500, "Live search failed.");
+    }
+});
+
+
+// 3. Get news for a single specific category (using Query: ?page=1&limit=10)
+// URL Example: /api/feeds/category/sport?page=1&limit=10
+router.get('/category/:catName', authentication, async (req, res) => {
+    try {
+        const { catName } = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // 1. Find all active sources that cover this specific category
+        // MongoDB handles the array search automatically
+        const sources = await Sources.find({ 
+            category: catName, 
+            isActive: true 
+        });
+
+        if (sources.length === 0) {
+            return respond(res, 404, `No active sources found for category: ${catName}`);
+        }
+
+        // 2. Fetch from all matching sources in parallel
+        const nestedResults = await Promise.all(
+            sources.map(source => fetchFromSource(source))
+        );
+
+        // 3. Flatten, remove empty results, and sort by date
+        let allArticles = nestedResults
+            .flat()
+            .filter(article => article && article.title)
+            .sort((a, b) => new Date(b.publishDate) - new Date(a.publishDate));
+
+        // 4. Manual Pagination
+        const totalItems = allArticles.length;
+        const paginatedArticles = allArticles.slice(skip, skip + limit);
+
+        return respond(res, 200, `${catName.toUpperCase()} feed fetched.`, {
+            feed: paginatedArticles,
+            pagination: {
+                totalItems,
+                totalPages: Math.ceil(totalItems / limit),
+                currentPage: page,
+                limit
+            }
+        });
+    } catch (error) {
+        console.error(`Category Fetch Error (${req.params.catName}):`, error);
+        return respond(res, 500, "Error fetching category news.");
     }
 });
 
