@@ -16,6 +16,8 @@ const sourcesSchema = new mongoose.Schema({
         title: { type: String, default: "title" },      // Field name for title
         link: { type: String, default: "url" },         // Field name for link
         thumbnail: { type: String, default: "urlToImage" }, // Field name for image
+        description: { type: String, default: "description" }, // Added
+        content: { type: String, default: "content" },         // Added
         date: { type: String, default: "publishedAt" }  // Field name for date
     },
     category: [{ 

@@ -24,6 +24,10 @@ const savesSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    content: {
+        type: String,
+        default: ""
+    },
     source: String,
     categories: [{
         type: String,

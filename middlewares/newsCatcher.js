@@ -39,6 +39,7 @@ const fetchFromApi = async (source) => {
         return rawArticles.map(article => ({
             title: article[map.title] || "Untitled",
             link: article[map.link],
+            content: article[map.content || 'content'] || article[map.description || 'description'] || "", // Fallback
             source: source.name,
             thumbnail: article[map.thumbnail] || null,
             publishDate: article[map.date] || new Date(),
@@ -68,9 +69,13 @@ const fetchFromRss = async (source) => {
             thumb = imgMatch ? imgMatch[1] : null;
         }
 
+        // RSS often has 'content' or 'contentEncoded'
+        const fullContent = item['content:encoded'] || item.content || item.contentSnippet || "";
+
         return {
             title: item.title,
             link: item.link || item.guid,
+            content: fullContent,
             source: source.name,
             thumbnail: thumb,
             publishDate: item.pubDate || item.isoDate,
