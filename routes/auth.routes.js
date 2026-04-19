@@ -3,11 +3,12 @@ const router = express.Router();
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import User from '../models/Users.schema.js';
-import respond from '../middlewares/tools/httpRes.js';
+import respond from '../tools/httpRes.js';
 import authentication from "../middlewares/authentication.js";
 import {sendVerificationEmail , sendResetPasswordEmail} from "../middlewares/emailService.js";
 import jwt from 'jsonwebtoken';
 import frontEndBaseUrl from '../config/frontEnd.js';
+import {isValidEmail, isValidPassword} from '../tools/validator.js';
 
 
 // to sign up:
@@ -19,6 +20,14 @@ router.post('/signup', async (req, res) => {
         // 1. Validation check
         if (!name || !email || !password) {
             return respond(res, 400, "Please fill all required fields.");
+        }
+
+        if (!isValidEmail(email)) {
+            return respond(res, 400, "Please enter valid email");
+        }
+
+        if (!isValidPassword(password)) {
+            return respond(res, 400, "Password must be 8+ characters and contain a number.");
         }
 
         // 2. Check if user already exists
@@ -161,6 +170,10 @@ router.post('/change_password', authentication, async (req, res) => {
             return respond(res, 400, "Please give your current password and new password.");
         }
 
+        if (!isValidPassword(newPassword)) {
+            return respond(res, 400, "Password must be 8+ characters and contain a number.");
+        }
+
         // 2. Security Check: Prevent using the same password
         if (password === newPassword) {
             return respond(res, 400, "New password cannot be the same as the current one.");
@@ -260,6 +273,11 @@ router.post('/reset_password/:token', async (req, res) => {
     try {
         const { token } = req.params;
         const { newPassword } = req.body;
+
+        // 0. validated the new password:
+        if (!isValidPassword(newPassword)) {
+            return respond(res, 400, "Password must be 8+ characters and contain a number.");
+        }
 
         // 1. Find user with valid token AND ensure it hasn't expired
         const user = await User.findOne({

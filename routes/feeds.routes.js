@@ -3,7 +3,7 @@ import authentication from "../middlewares/authentication.js";
 import Sources from "../models/Sources.schema.js";
 import User from "../models/Users.schema.js";
 import { fetchFromSource } from "../middlewares/newsCatcher.js";
-import respond from "../middlewares/tools/httpRes.js";
+import respond from "../tools/httpRes.js";
 
 const router = express.Router();
 

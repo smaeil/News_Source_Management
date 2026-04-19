@@ -1,7 +1,7 @@
 import express from "express";
 import authentication, { adminCheck } from "../middlewares/authentication.js";
 import Sources from "../models/Sources.schema.js";
-import respond from "../middlewares/tools/httpRes.js";
+import respond from "../tools/httpRes.js";
 
 const router = express.Router();
 

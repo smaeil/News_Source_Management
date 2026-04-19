@@ -1,7 +1,7 @@
 import express from "express";
 import authentication from "../middlewares/authentication.js";
 import Save from "../models/Saves.schema.js"; 
-import respond from "../middlewares/tools/httpRes.js";
+import respond from "../tools/httpRes.js";
 
 const router = express.Router();
 
