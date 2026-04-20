@@ -3,7 +3,7 @@
 // seving JSON to localStorage
 export const saveLocal = (keyName, item) => {
     if (typeof item === 'string') {
-        loadLocal.setItem(keyName, item);
+        localStorage.setItem(keyName, item);
     } else {
         localStorage.setItem(keyName, JSON.stringify(item));
     }

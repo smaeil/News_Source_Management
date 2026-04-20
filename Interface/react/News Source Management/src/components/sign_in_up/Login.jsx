@@ -1,10 +1,46 @@
+
+import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faKey } from '@fortawesome/free-solid-svg-icons';
+import api from '../../tools/axios';
+import { Toaster, toast } from 'react-hot-toast';
+import { useNavigate, Link } from 'react-router-dom';
+import { saveLocal } from '../../tools/localTools';
 
 
 const Login = () => {
+
+    const [formData, setFormData] = useState({email: '', password: ''});
+    const navigate = useNavigate();
+
+    const handleLogin = async (e) => {
+        e.preventDefault(); 
+
+        try {
+            
+            const response = await api.post('/signin', formData);
+
+            // 1. Get the token from the response
+            const { token } = response.data.data;
+
+            // 2. Save it to LocalStorage
+            saveLocal('token', token);
+			saveLocal('user', response.data.data.user);
+
+            toast.success(response.data.msg);
+
+            // 3. Redirect or update UI state
+            navigate('/', {viewTransition: true});
+
+        } catch (error) {
+            toast.error(error.response?.data?.msg || "Something went wrong!");
+            console.log(error);
+        }
+    }
+
 	return (
 		<>
+            <Toaster position='top-center'/>
 			<div className="hero bg-base-200 min-h-screen">
 				<div className="hero-content flex-col lg:flex-row-reverse">
 					<div className="text-center lg:text-left">
@@ -19,7 +55,7 @@ const Login = () => {
 					</div>
 					<div className="card bg-base-100 w-full max-w-sm shrink-0 shadow-2xl">
 						<div className="card-body">
-							<form action="">
+							<form onSubmit={handleLogin}>
 								<fieldset className="fieldset">
 									<label className="label">Email</label>
 									<label className="input validator">
@@ -31,6 +67,7 @@ const Login = () => {
 											type="email"
 											placeholder="mail@site.com"
 											required
+                                            onChange={e => {setFormData({...formData, email: e.target.value});}}
 										/>
 									</label>
 									<div className="validator-hint hidden">
@@ -50,6 +87,7 @@ const Login = () => {
 											minLength="8"
 											pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}"
 											title="Must be more than 8 characters, including number, lowercase letter, uppercase letter"
+                                            onChange={e => {setFormData({...formData, password: e.target.value})}}
 										/>
 									</label>
 									<p className="validator-hint hidden">
@@ -61,14 +99,14 @@ const Login = () => {
 										At least one uppercase letter
 									</p>
 									<div>
-										<a className="link link-hover">
+										<Link className="link link-hover" to='/forgot-password' viewTransition={true}>
 											Forgot password?
-										</a>
+										</Link>
 									</div>
                                     <div>
-										<a className="link link-hover">
-											Register as New User!
-										</a>
+										<Link className="link link-hover" to='/register' viewTransition={true}>
+											No account? Sign up here
+										</Link>
 									</div>
 									<input type='submit' value='Log in' className="btn btn-neutral mt-4"/>
 								</fieldset>
