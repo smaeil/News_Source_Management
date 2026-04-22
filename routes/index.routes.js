@@ -1,13 +1,14 @@
 import express from 'express';
 const router = express.Router();
 import { CATEGORIES } from '../models/enums.js';
+import respond from '../tools/httpRes.js';
 
 // getting categories:
 router.get('/categories', async (req, res) => {
     try {
         return respond(res, 200, null, CATEGORIES);
     } catch (error) {
-        return respond(res, 500);
+        return respond(res, 500, "something went wrong!");
     }
 });
 

@@ -47,7 +47,7 @@ const respond = function(res, code , msg , data) {
             break;
     }
 
-    const playload = {msg, hasError, success};
+    const playload = {msg};
     if (data !== undefined) {
         playload.data = data;
     }
