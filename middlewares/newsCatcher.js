@@ -1,4 +1,8 @@
+import Cache from '../models/Cache.schema.js';
 import Parser from 'rss-parser';
+
+const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+
 
 const parser = new Parser({
     customFields: {
@@ -109,20 +113,45 @@ export const fetchFromSource = async (source) => {
     try {
         if (!source.isActive) return [];
 
-        // Check URL Type and call appropriate function
-        if (source.urlType === 'api') {
-            return await fetchFromApi(source);
-        } 
-        
-        if (source.urlType === 'rss') {
-            return await fetchFromRss(source);
+        // 1. Look for existing cache
+        const cachedData = await Cache.findOne({ sourceId: source._id });
+        const now = Date.now();
+
+        // 2. Is the cache "Fresh"?
+        const isFresh = cachedData && (now - new Date(cachedData.updatedAt).getTime() < CACHE_DURATION_MS);
+
+        if (isFresh) {
+            console.log(`[Cache Hit] Serving fresh data for ${source.name}`);
+            return cachedData.articles;
         }
 
-        console.warn(`Unknown urlType: ${source.urlType} for source: ${source.name}`);
-        return [];
+        // 3. Cache is stale OR missing -> Try to fetch from internet
+        try {
+            console.log(`[Fetching Live] ${source.name}...`);
+            let news = [];
+            if (source.urlType === 'api') news = await fetchFromApi(source);
+            if (source.urlType === 'rss') news = await fetchFromRss(source);
+
+            // 4. Update the Cache with new data
+            await Cache.findOneAndUpdate(
+                { sourceId: source._id },
+                { articles: news, updatedAt: new Date() },
+                { upsert: true }
+            );
+
+            return news;
+
+        } catch (fetchError) {
+            // 5. CONNECTION LOST / FETCH ERROR FALLBACK
+            if (cachedData) {
+                console.warn(`[Network Error] Fetch failed for ${source.name}. Using stale cache.`);
+                return cachedData.articles; // Return old data instead of crashing
+            }
+            throw fetchError; // No cache and no internet? Throw error.
+        }
 
     } catch (error) {
-        console.error(`[newsCatcher] Error in ${source.name}:`, error.message);
+        console.error(`[newsCatcher Error] ${source.name}:`, error.message);
         return [];
     }
 };
