@@ -3,7 +3,6 @@ export const CATEGORIES = [
   "politics",
   "domestic",
   "foreign",
-  "weather",
   "health",
   "tech",
   "science",
