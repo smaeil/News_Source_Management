@@ -1,17 +1,21 @@
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope, faKey } from '@fortawesome/free-solid-svg-icons';
 import api from '../../tools/axios';
 import { Toaster, toast } from 'react-hot-toast';
 import { useNavigate, Link } from 'react-router-dom';
 import { saveLocal } from '../../tools/localTools';
+import { UserContext } from '../../UserContext';
+import { loadLocal } from '../../tools/localTools';
 
 
 const Login = () => {
 
     const [formData, setFormData] = useState({email: '', password: ''});
+	const [rememberMe, setRememberMe] = useState(false);
     const navigate = useNavigate();
+	const {isLoggedIn, setIsLoggedIn, userData, setUserData} = useContext(UserContext);
 
     const handleLogin = async (e) => {
         e.preventDefault(); 
@@ -20,14 +24,22 @@ const Login = () => {
             
             const response = await api.post('/signin', formData);
 
-            // 1. Get the token from the response
-            const { token } = response.data.data;
+			// 1. Getting the token and user data
+			const {token, user} = response.data.data;
 
             // 2. Save it to LocalStorage
             saveLocal('token', token);
-			saveLocal('user', response.data.data.user);
+			saveLocal('user', user);
+			saveLocal('rememberMe', rememberMe);
+			if (!rememberMe) {
+				sessionStorage.setItem('session_active', 'true');
+			}
 
             toast.success(response.data.msg);
+
+			// loading the token into context
+			setIsLoggedIn(true);
+			setUserData(user);
 
             // 3. Redirect or update UI state
             navigate('/', {viewTransition: true});
@@ -98,6 +110,10 @@ const Login = () => {
 										At least one lowercase letter <br />
 										At least one uppercase letter
 									</p>
+									<label className='label'>
+										Stay Logged in
+										<input type="checkbox" onChange={e => setRememberMe(e.target.checked)} defaultChecked={loadLocal('rememberMe')}/>
+									</label>
 									<div>
 										<Link className="link link-hover" to='/forgot-password' viewTransition={true}>
 											Forgot password?

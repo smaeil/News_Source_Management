@@ -11,12 +11,12 @@ export const saveLocal = (keyName, item) => {
 
 // Loading from localStorage
 export const loadLocal = (keyName) => {
-    const item = JSON.parse(localStorage.getItem(keyName));
-
-    if (item) {
-        return item;
-    } else {
-        return null;
+    try {
+        const item = JSON.parse(localStorage.getItem(keyName));
+        return item ? item : null;
+    } catch (error) {
+        const item = localStorage.getItem(keyName);
+        return item ? item : null;
     }
 }
 

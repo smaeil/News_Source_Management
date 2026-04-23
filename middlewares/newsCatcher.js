@@ -2,7 +2,12 @@ import Parser from 'rss-parser';
 
 const parser = new Parser({
     customFields: {
-        item: [['media:content', 'mediaContent'], ['enclosure', 'enclosure']],
+        item: [
+            ['media:content', 'mediaContent', {keepArray: false}], 
+            ['enclosure', 'enclosure'],
+            ['media:thumbnail', 'mediaThumbnail'],
+            ['image', 'image']
+        ],
     },
 });
 
@@ -58,10 +63,21 @@ const fetchFromApi = async (source) => {
  */
 const fetchFromRss = async (source) => {
     const feed = await parser.parseURL(source.url);
+
+    const webSiteLogo = feed.image.url;
     
     return feed.items.map(item => {
-        // Find thumbnail in common RSS spots
-        let thumb = item.mediaContent?.$.url || item.enclosure?.url || null;
+        // Find thumbnail in common RSS spots, handling the nested $ object
+        // 1. Check mediaContent (handling the $ object)
+        // 2. Check enclosure (handling the $ object)
+        let thumb = 
+            item.mediaContent?.$?.url || 
+            item.enclosure?.$?.url || 
+            item.enclosure?.url ||
+            item.mediaThumbnail?.$?.url ||
+            item.image?.$?.url ||
+            webSiteLogo || 
+            null;
         
         // Fallback: Scrape img from HTML content if necessary
         if (!thumb && item.content) {
