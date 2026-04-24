@@ -28,10 +28,13 @@ const savesSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
-    source: String,
+    source: {
+        type: String,
+        default: ""
+    },
     categories: [{
         type: String,
-        enum: CATEGORIES
+        enum: CATEGORIES,        
     }],
     publishDate: Date
 }, { timestamps: true });

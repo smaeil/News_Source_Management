@@ -81,9 +81,10 @@ router.get('/search', authentication, async (req, res) => {
         const paginatedResults = filteredArticles.slice(startIndex, startIndex + limit);
 
         return respond(res, 200, `Search results for "${q}"`, {
-            results: paginatedResults,
+            feed: paginatedResults,
             pagination: {
                 totalItems,
+                totalPages: Math.ceil(totalItems / limit),
                 currentPage: page
             }
         });
@@ -133,8 +134,7 @@ router.get('/category/:catName', authentication, async (req, res) => {
             pagination: {
                 totalItems,
                 totalPages: Math.ceil(totalItems / limit),
-                currentPage: page,
-                limit
+                currentPage: page,                
             }
         });
     } catch (error) {
