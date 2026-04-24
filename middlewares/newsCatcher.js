@@ -114,7 +114,7 @@ export const fetchFromSource = async (source) => {
         if (!source.isActive) return [];
 
         // 1. Look for existing cache
-        const cachedData = await Cache.findOne({ sourceId: source._id });
+        const cachedData = await Cache.findOne({ sourceId: source._id }).populate('sourceId').lean();
         const now = Date.now();
 
         // 2. Is the cache "Fresh"?
@@ -122,7 +122,11 @@ export const fetchFromSource = async (source) => {
 
         if (isFresh) {
             console.log(`[Cache Hit] Serving fresh data for ${source.name}`);
-            return cachedData.articles;
+            return cachedData.articles.map(article => ({
+                ...article,
+                source: cachedData.sourceId.name,
+                categories: cachedData.sourceId.category
+            }));
         }
 
         // 3. Cache is stale OR missing -> Try to fetch from internet
