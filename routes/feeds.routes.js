@@ -2,8 +2,8 @@ import express from "express";
 import authentication from "../middlewares/authentication.js";
 import Sources from "../models/Sources.schema.js";
 import User from "../models/Users.schema.js";
-import { fetchFromSource } from "../middlewares/newsCatcher.js";
-import respond from "../tools/httpRes.js";
+import { fetchFromSource } from "../services/newsCatcher.js";
+import respond from "../utils/httpRes.js";
 
 const router = express.Router();
 

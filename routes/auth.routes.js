@@ -1,17 +1,19 @@
 import express from "express";
-const router = express.Router();
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import User from "../models/Users.schema.js";
-import respond from "../tools/httpRes.js";
+import respond from "../utils/httpRes.js";
 import authentication from "../middlewares/authentication.js";
 import {
   sendVerificationEmail,
   sendResetPasswordEmail,
-} from "../middlewares/emailService.js";
+} from "../services/emailService.js";
 import jwt from "jsonwebtoken";
+import { jwtSecret } from "../config/index.js";
 import frontEndBaseUrl from "../config/frontEnd.js";
-import { isValidEmail, isValidPassword } from "../tools/validator.js";
+import { isValidEmail, isValidPassword } from "../utils/validator.js";
+
+const router = express.Router();
 
 // to verify the token.
 router.get("/verify", authentication, async (req, res) => {
@@ -22,10 +24,15 @@ router.get("/verify", authentication, async (req, res) => {
     if (!user) {
       return res.status(404).json({ msg: "User not found!" });
     }
-    return respond(res, 200, "user is logged in.", user)
+    const userData = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    };
+    return respond(res, 200, "user is logged in.", userData);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ msg: "Server error" });
+    return respond(res, 500, error.message);
   }
 });
 
@@ -70,44 +77,26 @@ router.post("/signup", async (req, res) => {
       email,
       password: hashedPassword,
       verificationToken: token,
+      verificationTokenExpiry: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
       isVerified: false, // Explicitly false until they click the link
     });
 
     const savedUser = await newUser.save();
 
-    const jwtToken = jwt.sign(
-      { id: savedUser._id, role: savedUser.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "365d" }, // Token lasts for 1 day
-    );
-
-    const userData = {
-      id: savedUser._id,
-      email: savedUser.email,
-      role: savedUser.role,
-      isVerified: savedUser.isVerified,
-      preferences: savedUser.preferences,
-    };
-
-    // --- INTEGRATING EMAIL SERVICE ---
+    // sending verification email
     try {
       await sendVerificationEmail(email, token);
-      // Success response
       return respond(
         res,
         200,
         "User registered! Please check your email to verify your account.",
-        { token: jwtToken, user: userData },
       );
     } catch (emailError) {
       console.error("Email failed to send:", emailError);
-      // We still return 201 because the user was created in DB,
-      // but we warn about the email.
       return respond(
         res,
-        200,
-        "Account created, but verification email failed to send. please verify your account later.",
-        { token: jwtToken, user: userData },
+        201,
+        "Account created, but verification email failed to send. please request for another verification link later.",
       );
     }
   } catch (error) {
@@ -116,27 +105,63 @@ router.post("/signup", async (req, res) => {
   }
 });
 
+router.post("/resend-verification", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !isValidEmail(email)) {
+      return respond(res, 400, "Email is not valid");
+    }
+
+    const user = await User.findOne({ email: email });
+
+    if (!user) {
+      return respond(res, 404, "no user with this email found!");
+    }
+
+    if (user.isVerified) {
+      return respond(res, 400, "user is already verified!");
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.verificationToken = token;
+    user.verificationTokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+    await user.save();
+
+    try {
+      await sendVerificationEmail(email, token);
+      return respond(res, 200, "Verification email sent successfully.");
+    } catch (emailError) {
+      console.error("Email failed to send:", emailError);
+      return respond(res, 500, "Failed to send verification email.");
+    }
+  } catch (error) {
+    console.log("verification email sending failed: ", error);
+    return respond(res, 500, error.message);
+  }
+});
+
 // to verify the account:
-router.get("/account_verification/:token", async (req, res) => {
+router.get("/account-verification/:token", async (req, res) => {
   try {
     const token = req.params.token;
 
     // 1. Find user with the matching token
-    const user = await User.findOne({ verificationToken: token });
+    const user = await User.findOne({
+      verificationToken: token,
+      verificationTokenExpiry: { $gt: Date.now() },
+    });
 
     if (!user) {
-      // Using your helper for "Not Found"
       return respond(res, 404, "Invalid or expired verification token.");
     }
 
     // 2. Update status and remove token
     user.isVerified = true;
     user.verificationToken = undefined;
+    user.verificationTokenExpiry = undefined;
     await user.save();
 
-    // 3. Final success response
-    // Vibe Tip: If you want to redirect them to your React App:
-    // return res.redirect('http://localhost:5173/login?verified=true');
     return respond(res, 200, "Email verified successfully!");
   } catch (error) {
     console.error("Verification error:", error);
@@ -149,38 +174,41 @@ router.post("/signin", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Basic Validation
     if (!email || !password) {
       return respond(res, 400, "Please provide email and password.");
     }
 
-    // 2. Find User
+    // finding the user
     const user = await User.findOne({ email: email });
     if (!user) {
       return respond(res, 401, "Invalid credentials!"); // 401 Unauthorized
     }
 
-    // 4. Compare Password
+    if (!user.isVerified) {
+      return respond(
+        res,
+        403,
+        "Email not verified! check your inbox or request for a verification link.",
+      );
+    }
+
+    // comparing the password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return respond(res, 401, "Wrong Password!");
     }
 
-    // 5. Create JWT Token
-    // The 'payload' usually contains the user ID
+    // creating users JWT token
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: "365d" }, // Token lasts for 1 day
     );
 
-    // 6. Send response with the token and user data (except password!)
     const userData = {
       id: user._id,
       email: user.email,
       role: user.role,
-      isVerified: user.isVerified,
-      preferences: user.preferences,
     };
 
     return respond(res, 200, "Login successful!", { token, user: userData });
@@ -247,7 +275,7 @@ router.post("/change_password", authentication, async (req, res) => {
 });
 
 // to request a password reset:
-router.post("/forgotten_password", async (req, res) => {
+router.post("/forgotten-password", async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
@@ -283,7 +311,7 @@ router.post("/forgotten_password", async (req, res) => {
 });
 
 // This is the route the user clicks in their email
-router.get("/verify_reset/:token", async (req, res) => {
+router.get("/verify-reset/:token", async (req, res) => {
   try {
     const { token } = req.params;
 
@@ -294,27 +322,19 @@ router.get("/verify_reset/:token", async (req, res) => {
     });
 
     if (!user) {
-      // If invalid, send them to a frontend error page
-      return res.redirect(`${frontEndBaseUrl}/reset-error`);
+      return respond(res, 400, "Token is invalid or has expired.");
     }
 
-    // If valid, redirect to the Frontend Reset Form
-    // We pass the token in the URL so the frontend can send it back later
-    return res.redirect(
-      `${frontEndBaseUrl}/reset-password-form?token=${token}`,
-    );
+    return respond(res, 200, "Token is valid.", { token });
   } catch (error) {
-    // redirects to front end reset form
-    return res.redirect(`${frontEndBaseUrl}/reset-error`);
+    return respond(res, 500, "Server error.");
   }
 });
 
 // to reset password in case of forgotten password
-router.post("/reset_password/:token", async (req, res) => {
+router.post("/reset-password", async (req, res) => {
   try {
-    const { token } = req.params;
-    const { newPassword } = req.body;
-
+    const { token, newPassword } = req.body;
     // 0. validated the new password:
     if (!isValidPassword(newPassword)) {
       return respond(

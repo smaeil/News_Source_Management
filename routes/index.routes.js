@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import { CATEGORIES } from '../models/enums.js';
-import respond from '../tools/httpRes.js';
+import respond from '../utils/httpRes.js';
 
 // getting categories:
 router.get('/categories', async (req, res) => {
@@ -11,9 +11,6 @@ router.get('/categories', async (req, res) => {
         return respond(res, 500, "something went wrong!");
     }
 });
-
-// Sending React dist:
-router.get('/', (req, res) => res.sendFile('./public/index.html'));
 
 // to sign in and sign up:
 import auth from './auth.routes.js';

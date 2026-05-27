@@ -1,17 +1,28 @@
 import mongoose from "mongoose";
+import { mongodbUri } from "./index.js";
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.DB_URI);
+let isConnected = false;
 
-    console.log(
-      `MongoDB Connected: ${conn.connection.host}:${conn.connection.port}`,
-    );
-    console.log(`Database Name: ${conn.connection.name}`);
-  } catch (error) {
-    console.error(`MongoDB Connection Error: ${error.message}`);
-    process.exit(1);
+export async function connectDB() {
+  if (isConnected) {
+    console.log("📦 Using existing database connection");
+    return;
   }
-};
 
-export default connectDB;
+  try {        
+    await mongoose.connect(mongodbUri);
+    isConnected = true;
+    console.log("✅ MongoDB connected successfully");
+  } catch (error) {
+    console.error("❌ MongoDB connection error:", error);
+    throw error; // Rethrow so the server can handle it
+  }
+}
+
+// Optional: graceful shutdown
+export async function disconnectDB() {
+  if (!isConnected) return;
+  await mongoose.disconnect();
+  isConnected = false;
+  console.log("📦 MongoDB disconnected");
+}

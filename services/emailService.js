@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import baseUrl from "../config/baseUrl.js";
+import { frontendBaseUrl, emailUser, emailPassword } from "../config/index.js";
 
 // Create transporter once at the top level
 const transporter = nodemailer.createTransport({
@@ -7,14 +7,14 @@ const transporter = nodemailer.createTransport({
   port: 587, // Corrected to 465
   secure: false,
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: emailUser,
+    pass: emailPassword,
   },
 });
 
 // for verification of new user sing up
 export const sendVerificationEmail = async (userEmail, token) => {
-  const verificationUrl = `${baseUrl}/account_verification/${token}`;
+  const verificationUrl = `${frontendBaseUrl}/account_verification/${token}`;
 
   const mailOptions = {
     from: "News-Aggregator-App<mohammadielyasbs@gmail.com>", // Corrected quotes
@@ -39,11 +39,11 @@ export const sendVerificationEmail = async (userEmail, token) => {
 };
 
 // for resetting the password
-export const sendResetPasswordEmail = async (userEmail, token) => {
-  const resetUrl = `${baseUrl}/verify_reset/${token}`; // Usually points to a Frontend page
+export const sendResetPasswordEmail = async (userEmail, token) => {  
+  const resetUrl = `${frontendBaseUrl}/password-reset/${token}`;
 
   const mailOptions = {
-    from: '"NSM Security" <no-reply@nsm.com>',
+    from: "News-Aggregator-App<mohammadielyasbs@gmail.com>",
     to: userEmail,
     subject: "Password Reset Request",
     html: `

@@ -17,9 +17,7 @@ const authentication = function (req, res, next) {
 
     next();
   } catch (error) {
-    console.log(
-      `[ip: ${req.ip}] to [path: ${req.originalUrl}] with ${req.method} method ===> [ ACCESS DENIED ]`,
-    );
+    console.log(error);
     return res.status(401).json({ msg: "Unauthorized!" });
   }
 };
